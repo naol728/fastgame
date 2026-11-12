@@ -1,0 +1,138 @@
+import React, { Suspense, useEffect, useState } from "react";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import Game from "./pages/player/Game";
+import Invite from "./pages/player/Invite";
+import Mainlayout from "./layout/Mainlayout";
+import Profile from "./pages/player/Profile";
+import Jetx from "./pages/game/Jetx/Jetx";
+import CardDraw from "./pages/game/carddraw/CardDraw";
+import { ToastContainer } from "react-toastify"
+import { initAuth } from "./store/slice/auth";
+import { useAppDispatch, useAppSelector } from "./store/hook";
+import { connectSocket } from "./lib/socket";
+import { toast } from 'react-toastify';
+import MatchMakingLayout from "./layout/MatchMakingLayout";
+import { registerSocketListeners } from "./lib/socketListeners";
+import MinimalLayout from "./layout/MinimalLayout";
+import Loading from "./components/layout/Loading";
+import { SessionStatsProvider } from "./stats/SessionStatsContext";
+import Slots from "./pages/game/Slot/Slot";
+import LeaderBoard from "./pages/player/LeaderBoard";
+import CrashGame from "./pages/Crash/Crash";
+import PhoneNumberSetup from "./components/PhoneNumberSetup";
+import Deposit from "./pages/player/Deposit";
+import Support from "./pages/player/Support";
+import Keno from "./pages/game/keno/Keno";
+import Mines from "./pages/game/mines/Mines";
+import Plinko from "./pages/game/plinko/Plinko";
+import Dice from "./pages/game/dice/Dice";
+import Baccarat from "./pages/game/barcat/Baccarat";
+import DinoGame from "./pages/game/dino/Dino";
+import Roulette from "./pages/game/roulette/Roulette";
+
+
+export default function App() {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.auth.user)
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    async function init() {
+      try {
+        await dispatch(initAuth()).unwrap();
+        await connectSocket();
+        await registerSocketListeners();
+      } catch (err: unknown) {
+        let message = "Initialization failed";
+        if (err instanceof Error) {
+          message = err.message;
+        }
+        toast.error(message);
+      } finally {
+        setReady(true);
+      }
+    }
+
+    init();
+  }, []);
+
+
+  if (!ready) {
+    return (
+      <Loading />
+    );
+  }
+  if (!user?.phone) {
+    return (
+      <PhoneNumberSetup
+        onComplete={async () => {
+          try {
+            await dispatch(initAuth()).unwrap();
+          } catch (error) {
+            console.error("Failed to refresh user:", error);
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <Suspense fallback={<Loading />}>
+      <SessionStatsProvider >
+
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Mainlayout />}>
+              <Route index element={<Game />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/leaderboard" element={<LeaderBoard />} />
+              <Route path="/invite" element={<Invite />} />
+              <Route path="/support" element={<Support />} />
+              <Route path="/promo" element={<Invite />} />
+            </Route>
+            <Route element={<MatchMakingLayout />}>
+              <Route path="/jetxpick" element={<Jetx />} />
+              <Route path="/slot" element={<Slots />} />
+              <Route path="/aviator" element={<CrashGame />} />
+              <Route path="/keno" element={<Keno />} />
+              <Route path="/mines" element={<Mines />} />
+              <Route path="/joker-x" element={<Dice />} />
+              <Route path="/plinko" element={<Plinko />} />
+              <Route path="/baccarat" element={<Baccarat />} />
+              <Route path="/deno" element={<DinoGame />} />
+              <Route path="/roulette" element={<Roulette />} />
+            </Route>
+
+            <Route element={<MinimalLayout />}>
+              <Route path="/deposit/:trxno" element={<Deposit />} />
+            </Route>
+            {/* <Route path="/connectfour/:roomId" element={<ConnectFour />} /> */}
+            <Route path="/carddraw/:roomId" element={<CardDraw />} />
+          </Routes>
+
+          <ToastContainer
+            position="top-center"
+            autoClose={2000}
+            hideProgressBar
+            newestOnTop
+            closeOnClick
+            draggable={false}
+            pauseOnHover={false}
+            theme="dark"
+            toastStyle={{
+              background: "linear-gradient(135deg, #17130d 0%, #0d0d0d 100%)",
+              color: "#ffffff",
+              border: "1px solid rgba(212, 175, 55, 0.6)",
+              borderRadius: "14px",
+              boxShadow:
+                "0 8px 30px rgba(0, 0, 0, 0.5), 0 0 18px rgba(212, 175, 55, 0.15)",
+              fontSize: "13px",
+              fontWeight: 600,
+              minHeight: "52px",
+              width: "min(360px, calc(100vw - 24px))",
+            }}
+          />
+        </BrowserRouter>
+      </SessionStatsProvider>
+    </Suspense>
+  );
+}
